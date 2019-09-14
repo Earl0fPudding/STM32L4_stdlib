@@ -1,3 +1,5 @@
+void setTimeAndDate(uint8_t hour, uint8_t minute, uint8_t second, uint8_t dayOfMonth, uint8_t dayOfWeek, uint8_t month, uint8_t year);
+
 void initRtc(void){
     RCC->APB1ENR1 |= RCC_APB1ENR1_PWREN; // enable power for apb1
 //    RCC->APB1ENR1 |= RCC_APB1ENR1_RTCAPBEN; // necessary? apparently not
@@ -16,6 +18,7 @@ void initRtc(void){
     RTC->ISR&=~RTC_ISR_INIT; // tell RTC to leave init mode
 
     RTC->WPR = 0xFF; // enable the RTC registers' write protection
+
     PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
 }
 
@@ -259,4 +262,26 @@ void configRtcRefOut(void){
     GPIOB->AFR[0] |= ~(0b1111 << GPIO_AFRL_AFSEL2_Pos);
     RTC->CR|=RTC_CR_COE;
     RTC->OR |= RTC_OR_OUT_RMP;
+}
+
+void setTimeAndDate(uint8_t hour, uint8_t minute, uint8_t second, uint8_t dayOfMonth, uint8_t dayOfWeek, uint8_t month, uint8_t year){
+    PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
+    RTC->WPR = 0xCA; // first step to disable RTC registers' write protection
+    RTC->WPR = 0x53; // final step to disable RTC registers' write protection
+
+    RTC->ISR|=RTC_ISR_INIT; // set RTC to init mode
+    while (!(RTC->ISR & RTC_ISR_INITF)); // wait for RTC to get into init mode
+
+    RTC->DR = dayOfWeek << RTC_DR_WDU_Pos|
+            dayOfMonth/10 << RTC_DR_DT_Pos | dayOfMonth % 10 << RTC_DR_DU_Pos|
+            month/10 << RTC_DR_MT_Pos | month % 10 << RTC_DR_MU_Pos|
+            year/10 << RTC_DR_YT_Pos | year % 10 << RTC_DR_YU_Pos;
+    RTC->TR= second/10 << RTC_TR_ST_Pos | second % 10 << RTC_TR_SU_Pos|
+            minute/10 << RTC_TR_MNT_Pos | minute % 10 << RTC_TR_MNU_Pos|
+            hour/10 << RTC_TR_HT_Pos | hour % 10 << RTC_TR_HU_Pos;
+
+    RTC->ISR&=~RTC_ISR_INIT; // tell RTC to leave init mode
+
+    RTC->WPR = 0xFF; // enable the RTC registers' write protection
+    PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
 }
