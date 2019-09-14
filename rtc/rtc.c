@@ -12,16 +12,7 @@ void initRtc(void){
     RTC->ISR|=RTC_ISR_INIT; // set RTC to init mode
     while (!(RTC->ISR & RTC_ISR_INITF)); // wait for RTC to get into init mode
 
-    RTC->PRER=0x007F00FF;
-
-    //enableAlarmA();
-    //setAlarmA(0,0,0,0,0,0,0,0,0);
-    //RTC->PRER =0; // erase prescaler register
-    //RTC->PRER|= 1 << RTC_PRER_PREDIV_A_Pos; // prescaler for 256 Hz
-    //RTC->PRER|=32768 << RTC_PRER_PREDIV_S_Pos; // second prescaler for 1Hz
-    //RTC->CR |=RTC_CR_ALRAIE;
- //   while (RTC->ISR & RTC_ISR_ALRAWF);
-
+    RTC->PRER=0x007F00FF; // set div a to 127 and div s to 255
     RTC->ISR&=~RTC_ISR_INIT; // tell RTC to leave init mode
 
     RTC->WPR = 0xFF; // enable the RTC registers' write protection
@@ -29,23 +20,21 @@ void initRtc(void){
 }
 
 void stopAlarmA(void){
-   // NVIC_DisableIRQ(RTC_Alarm_IRQn);
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
     RTC->ISR &=~RTC_ISR_ALRAF; // turn alarm off
     PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
-    //__enable_irq();
 }
 
 void enableAlarmA(void){
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
     RTC->WPR = 0xCA; // first step to disable RTC registers' write protection
     RTC->WPR = 0x53; // final step to disable RTC registers' write protection
-    RTC->CR |= RTC_CR_ALRAE;
-    RTC->CR |= RTC_CR_ALRAIE;
-    EXTI->IMR1 |= EXTI_IMR1_IM18;
-    EXTI->RTSR1 |=EXTI_RTSR1_RT18;
-    NVIC_EnableIRQ(RTC_Alarm_IRQn);
-    //NVIC_SetPriority(RTC_Alarm_IRQn, 0);
+    RTC->CR |= RTC_CR_ALRAE; // enable alarm A
+    RTC->CR |= RTC_CR_ALRAIE; // enable alarm A interrupt in RTC register
+    EXTI->IMR1 |= EXTI_IMR1_IM18; // enable alarm interrupt in EXTI register
+    EXTI->RTSR1 |=EXTI_RTSR1_RT18; // goto interrupt at rising edge
+    NVIC_EnableIRQ(RTC_Alarm_IRQn); // enable the interrupt vector
+    //NVIC_SetPriority(RTC_Alarm_IRQn, 0); // optional
     RTC->WPR = 0xFF; // enable write protection
     PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
 }
@@ -54,14 +43,14 @@ void disableAlarmA(void){
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
     RTC->WPR = 0xCA; // first step to disable RTC registers' write protection
     RTC->WPR = 0x53; // final step to disable RTC registers' write protection
-    RTC->CR &= ~RTC_CR_ALRAE;
-    while (!(RTC->ISR & RTC_ISR_ALRAWF));
+    RTC->CR &= ~RTC_CR_ALRAE; // unset enable bit for alarm A
+    while (!(RTC->ISR & RTC_ISR_ALRAWF)); // wait for bit to be set
     RTC->WPR = 0xFF; // enable write protection
     PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
 }
 
 uint8_t alarmAenabled(){
-    return RTC->CR & RTC_CR_ALRAE;
+    return RTC->CR & RTC_CR_ALRAE; // return 1 if alarm A is enabled else 0
 }
 void setAlarmA(uint8_t daysMatter, uint8_t domOrdow, uint8_t day, uint8_t hoursMatter, uint8_t hour, uint8_t minutesMatter, uint8_t minutes, uint8_t secondsMatter, uint8_t seconds){
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
@@ -122,6 +111,7 @@ void disableAlarmB(void){
 uint8_t alarmBenabled(){
     return RTC->CR & RTC_CR_ALRBE;
 }
+
 void setAlarmB(uint8_t daysMatter, uint8_t domOrdow, uint8_t day, uint8_t hoursMatter, uint8_t hour, uint8_t minutesMatter, uint8_t minutes, uint8_t secondsMatter, uint8_t seconds){
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
     RTC->WPR = 0xCA; // first step to disable RTC registers' write protection

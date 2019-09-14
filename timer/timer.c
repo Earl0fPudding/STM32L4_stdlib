@@ -1,18 +1,24 @@
 #include "timer.h"
 
+// the default wait timer
 void initTimer6(void){
     RCC->APB1ENR1 |= RCC_APB1ENR1_TIM6EN;
     TIM6->CR1 |= TIM_CR1_CEN;
     TIM6->PSC=100;
+    for (long i = 0; i < 100000; i++) { __NOP(); } // wait about 250 ms
 }
 
+// the default timer for capture compare interrupts
 void initTimer1(void){
      RCC->APB2ENR|= RCC_APB2ENR_TIM1EN;
      TIM1->CR1 |= TIM_CR1_CEN;
-     TIM1->DIER|=TIM_DIER_CC1IE;
      TIM1->PSC=100;
-     TIM1->CCR1=40000;
-     NVIC_EnableIRQ(TIM1_CC_IRQn);
+}
+
+void enableTimer1CC(uint16_t triggerValue){
+    TIM1->DIER|=TIM_DIER_CC1IE;
+    TIM1->CCR1= triggerValue; // 40000;
+    NVIC_EnableIRQ(TIM1_CC_IRQn);
 }
 
 void disableTimer1(void){

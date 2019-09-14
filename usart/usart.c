@@ -2,7 +2,6 @@
 #include "../timer/timer.c"
 #include <math.h>
 #include <string.h>
-#include <stdlib.h>
 
 void serialSendData(uint8_t data) {
     USART1->TDR = data;
