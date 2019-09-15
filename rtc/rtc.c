@@ -1,4 +1,4 @@
-void setTimeAndDate(uint8_t hour, uint8_t minute, uint8_t second, uint8_t dayOfMonth, uint8_t dayOfWeek, uint8_t month, uint8_t year);
+#include "rtc.h"
 
 void initRtc(void){
     RCC->APB1ENR1 |= RCC_APB1ENR1_PWREN; // enable power for apb1
@@ -169,38 +169,71 @@ uint16_t getCurrentYearFull(void){
     return getCurrentYear()+2000;
 }
 
+uint8_t getCurrentWeekdayNum(void){
+    return (RTC->DR & RTC_DR_WDU) >> RTC_DR_WDU_Pos;
+}
+
+char* getCurrentWeekdayFull(void){
+    return Fullweekdays[getCurrentWeekdayNum()-1];
+}
+char* getCurrentWeekdayShort(void){
+    return Shortweekdays[getCurrentWeekdayNum()-1];
+}
+
 // DONT FORGET TO FREE MEMORY
-char* getCurrentDate(void){
-    char *date=(char *)malloc(10);
+char* getCurrentDate(uint8_t fullYear, uint8_t includeWeekday, char delimiter){
+    char *date=(char *)malloc(15);
     char buffer[4];
-    char* delimiter=".";
+    uint8_t offset=0;
+    if(includeWeekday){
+        offset=5;
+        date[0]=getCurrentWeekdayShort()[0];
+        date[1]=getCurrentWeekdayShort()[1];
+        date[2]=getCurrentWeekdayShort()[2];
+        date[3]=',';
+        date[4]=' ';
+    }
     uint16_t  tmp=getCurrentDay();
     sprintf(buffer, "%d", tmp);
     if(tmp<10){
-        date[0]='0';
-        date[1]=buffer[0];
+        date[offset+0]='0';
+        date[offset+1]=buffer[0];
     } else{
-        date[0]=buffer[0];
-        date[1]=buffer[1];
+        date[offset+0]=buffer[0];
+        date[offset+1]=buffer[1];
     }
-    date[2]='.';
+    date[offset+2]=delimiter;
     tmp=getCurrentMonth();
     sprintf(buffer, "%d", tmp);
     if(tmp<10){
-        date[3]='0';
-        date[4]=buffer[0];
+        date[offset+3]='0';
+        date[offset+4]=buffer[0];
     } else{
-        date[3]=buffer[0];
-        date[4]=buffer[1];
+        date[offset+3]=buffer[0];
+        date[offset+4]=buffer[1];
     }
-    date[5]='.';
-    tmp=getCurrentYearFull();
-    sprintf(buffer, "%d", tmp);
-    date[6]=buffer[0];
-    date[7]=buffer[1];
-    date[8]=buffer[2];
-    date[9]=buffer[3];
-    date[10]='\0';
+    date[offset+5]=delimiter;
+    if(fullYear) {
+        tmp = getCurrentYearFull();
+        sprintf(buffer, "%d", tmp);
+        date[offset+6] = buffer[0];
+        date[offset+7] = buffer[1];
+        date[offset+8] = buffer[2];
+        date[offset+9] = buffer[3];
+        date[offset+10] = '\0';
+    } else {
+        tmp=getCurrentYear();
+        sprintf(buffer, "%d", tmp);
+        if(tmp<10){
+            date[offset+6]='0';
+            date[offset+7]=buffer[0];
+        }
+        else{
+            date[offset+6]=buffer[0];
+            date[offset+7]=buffer[1];
+        }
+        date[offset+8] = '\0';
+    }
     return date;
 }
 
@@ -264,23 +297,23 @@ void configRtcRefOut(void){
     RTC->OR |= RTC_OR_OUT_RMP;
 }
 
-void setTimeAndDate(uint8_t hour, uint8_t minute, uint8_t second, uint8_t dayOfMonth, uint8_t dayOfWeek, uint8_t month, uint8_t year){
+void setTimeAndDate(uint8_t hour, uint8_t minute, uint8_t second, uint8_t dayOfMonth, uint8_t dayOfWeek, uint8_t month, uint8_t year) {
     PWR->CR1 |= PWR_CR1_DBP; // write access to rtc and backup registers enabled
     RTC->WPR = 0xCA; // first step to disable RTC registers' write protection
     RTC->WPR = 0x53; // final step to disable RTC registers' write protection
 
-    RTC->ISR|=RTC_ISR_INIT; // set RTC to init mode
+    RTC->ISR |= RTC_ISR_INIT; // set RTC to init mode
     while (!(RTC->ISR & RTC_ISR_INITF)); // wait for RTC to get into init mode
 
-    RTC->DR = dayOfWeek << RTC_DR_WDU_Pos|
-            dayOfMonth/10 << RTC_DR_DT_Pos | dayOfMonth % 10 << RTC_DR_DU_Pos|
-            month/10 << RTC_DR_MT_Pos | month % 10 << RTC_DR_MU_Pos|
-            year/10 << RTC_DR_YT_Pos | year % 10 << RTC_DR_YU_Pos;
-    RTC->TR= second/10 << RTC_TR_ST_Pos | second % 10 << RTC_TR_SU_Pos|
-            minute/10 << RTC_TR_MNT_Pos | minute % 10 << RTC_TR_MNU_Pos|
-            hour/10 << RTC_TR_HT_Pos | hour % 10 << RTC_TR_HU_Pos;
+    RTC->DR = dayOfWeek << RTC_DR_WDU_Pos |
+              dayOfMonth / 10 << RTC_DR_DT_Pos | dayOfMonth % 10 << RTC_DR_DU_Pos |
+              month / 10 << RTC_DR_MT_Pos | month % 10 << RTC_DR_MU_Pos |
+              year / 10 << RTC_DR_YT_Pos | year % 10 << RTC_DR_YU_Pos;
+    RTC->TR = second / 10 << RTC_TR_ST_Pos | second % 10 << RTC_TR_SU_Pos |
+              minute / 10 << RTC_TR_MNT_Pos | minute % 10 << RTC_TR_MNU_Pos |
+              hour / 10 << RTC_TR_HT_Pos | hour % 10 << RTC_TR_HU_Pos;
 
-    RTC->ISR&=~RTC_ISR_INIT; // tell RTC to leave init mode
+    RTC->ISR &= ~RTC_ISR_INIT; // tell RTC to leave init mode
 
     RTC->WPR = 0xFF; // enable the RTC registers' write protection
     PWR->CR1 &= ~PWR_CR1_DBP; // write access to rtc and backup registers disabled
