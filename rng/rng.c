@@ -25,3 +25,13 @@ uint32_t getRandomBinaryDigits(uint8_t digits){
 char getRandomAsciiChar(){
     return getRandomBinaryDigits(8);
 }
+
+// returns a true random number between the first parameter inclusive and the second parameter inclusive
+uint32_t getRandomNumberBetween(uint32_t minInc, uint32_t maxInc){
+    if(minInc > maxInc) { return 0;} // prevents microcontroller from crashing
+    uint32_t randy=minInc;
+    for (uint32_t i = 0; i < maxInc-minInc; ++i) {
+        randy+=getRandomBinaryDigits(1);
+    }
+    return randy;
+}
