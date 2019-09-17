@@ -35,6 +35,7 @@ void wait_us(uint16_t us){
     __enable_irq();
 }
 
+/*
 void wait_seconds(uint8_t secs){
     for (uint8_t i = 0; i < secs; ++i) {
         __disable_irq();
@@ -44,13 +45,12 @@ void wait_seconds(uint8_t secs){
     }
     //wait_ms(secs*1000);
 }
-
+*/
 void wait_ms(uint16_t ms){
     for (uint16_t i = 0; i < ms; ++i) {
         __disable_irq();
         TIM6->CNT=0;
         while (TIM6->CNT < 40) { }
         __enable_irq();
-        //__NOP();
     }
 }
