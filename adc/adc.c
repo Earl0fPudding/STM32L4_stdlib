@@ -1,3 +1,5 @@
+#include "adc.h"
+
 void initAdc1(void){
     RCC->AHB2ENR|=RCC_AHB2ENR_ADCEN; // enable adc for the bus
     RCC->CCIPR|= 0b11 << RCC_CCIPR_ADCSEL_Pos; // system clock as adc clock
@@ -8,19 +10,18 @@ void initAdc1(void){
     // calibrate the adc
     ADC1->CR &= ~ADC_CR_DEEPPWD; // adc not in low power mode
     ADC1->CR |= ADC_CR_ADVREGEN;
-    for (uint16_t i = 0; i < 10000; ++i) {
-        __NOP();
-    }
     ADC1->CR &= ~ADC_CR_ADEN;
     ADC1->CR &= ~ADC_CR_ADCALDIF; // single ended input
     ADC1->CR |=ADC_CR_ADCAL;
     while (ADC1->CR & ADC_CR_ADCAL);
 
-    ADC1_COMMON->CCR |= ADC_CCR_TSEN; // enable temperature sensor
+    // enable temperature sensor
+    ADC1_COMMON->CCR |= ADC_CCR_TSEN;
 
     //set input
     ADC1->SQR1 &= ~ADC_SQR1_L; // 1 conversion
     ADC1->SQR1 |= 17 << ADC_SQR1_SQ1; // temp sensor on sequence 1
+    //ADC1->SQR1 |= 6 << ADC_SQR1_SQ1; // pa0
 
     // enable the adc
     ADC1->ISR |=ADC_ISR_ADRDY;
@@ -34,3 +35,8 @@ uint16_t getAdc1Conversion(void){
     while (!(ADC1->ISR & ADC_ISR_EOC));
     return ADC1->DR;
 }
+
+float getJunctionTemperature(){
+    return (( (TS_CAL2_TEMP - TS_CAL1_TEMP) / (TS_CAL2 - TS_CAL1) ) * (getAdc1Conversion() - TS_CAL1) + 30)/10.0;
+}
+
